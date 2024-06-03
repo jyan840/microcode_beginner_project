@@ -111,4 +111,9 @@ clock cycle   CSAR    control signals                             next addr
 
 ### Control Table of Five Instructions:
 
-![image-20240603135723485](C:\Users\46023\AppData\Roaming\Typora\typora-user-images\image-20240603135723485.png)
+![control_store_with_strcpy](control_store_with_strcpy.jpg)
+
+
+
+
+
