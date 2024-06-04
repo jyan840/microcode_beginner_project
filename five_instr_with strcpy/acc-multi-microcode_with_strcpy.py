@@ -98,7 +98,7 @@ with pyrtl.conditional_assignment:
         with op == 0:
             next_address |= 0b00101 #00101
         with op == 1:
-            next_address |= 0b00100 #01000
+            next_address |= 0b01000 #01000
         with op == 2:
             next_address |= 0b01100 #01100
         with op == 3:
@@ -228,7 +228,7 @@ sim_trace = pyrtl.SimulationTrace()
 
 # Initialize the i_mem with your instructions.
 i_mem_init = {}
-with open('test-acc1.txt', 'r') as fin:
+with open('test-acc2_strcpy.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         i_mem_init[i] = int(line, 16)
@@ -242,7 +242,7 @@ sim = pyrtl.Simulation(tracer=sim_trace, memory_value_map={
 })
 
 # Run for an arbitrarily large number of cycles.
-for cycle in range(100):
+for cycle in range(50):
     sim.step({})
 
 # Use render_trace() to debug if your code doesn't work.
@@ -275,14 +275,14 @@ print(sim.inspect_mem(control_store))
 # assert(sim.inspect_mem(memory)[2] == 0x1ea)
 # print("passed!")
 
-# Test Case: test-acc2_store.txt;
+# Test Case: test-acc2_store(m).txt;
 # assert(sim.inspect_mem(memory)[0] == 0xc8)
 # assert(sim.inspect_mem(memory)[1] == 0x1d9)
-# assert(sim.inspect_mem(memory)[2] == 0x215)
-# assert(sim.inspect_mem(memory)[3] == 0x4b6)
+# assert(sim.inspect_mem(memory)[2] == 0x211)
+# assert(sim.inspect_mem(memory)[3] == 0x4b2)
 # print("passed!")
 
-# Test Case: test-acc1_brz.txt; num_cycle=28
+# Test Case: test-acc1_brz(m).txt; num_cycle=28
 # assert(sim.inspect(acc) == 0x602)
 # print("passed!")
 
@@ -291,12 +291,29 @@ print(sim.inspect_mem(control_store))
 # print("passed!")
 
 # Test Case: test-acc1.txt
-assert(sim.inspect(acc) == 0x1001)
-print("passed!")
+# assert(sim.inspect(acc) == 0x1001)
+# print("passed!")
 
 # Test Case: test-acc2.txt
 # assert(sim.inspect(acc) == 0x0622)
 # assert(sim.inspect_mem(memory)[0] == 0x0622)
 # print("passed!")
 
+# Test Case: test-acc1_strcpy.txt; num_cycle=22
+# assert(sim.inspect_mem(memory)[0] == 0xabab)
+# assert(sim.inspect_mem(memory)[1] == 0x0)
+# assert(sim.inspect(ir) == 0x0)
+# print("passed!")
+
+
+
+# Test Case: test-acc2_strcpy.txt; num_cycle=50
+assert(sim.inspect_mem(memory)[8] == 0x1004)
+assert(sim.inspect_mem(memory)[9] == 0x1234)
+assert(sim.inspect_mem(memory)[10] == 0x5678)
+assert(sim.inspect_mem(memory)[11] == 0x9abc)
+assert(sim.inspect_mem(memory)[12] == 0xdef0)
+assert(sim.inspect_mem(memory)[13] == 0x0000)
+assert(sim.inspect(ir) == 0x1234)
+print("passed!")
 
