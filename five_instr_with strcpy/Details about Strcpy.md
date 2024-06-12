@@ -1,6 +1,43 @@
+## Details about Strcpy:
+
+#### Instruction:
+
+```
+(opcode 100)  strcpy source dest :  memory[ dest ] <- memory[ source .. \0 ] 
+100. xxxxxx yyyyyyy
+```
+
+#### Example:
+
+```
+before memory:
+00: ----
 
 
-### Implementation Plan:
+f0: ffff
+  : ffff
+  : 0000
+
+after memory:
+00: ffff
+  : ffff
+  : 0000
+
+f0: ffff
+  : ffff
+  : 0000
+
+strcpy f0 00
+==> ACC <- mem[f0]
+==> mem[00] <- ACC
+==> ACC <- mem[fX]
+==> mem[0X] <-- ACC
+==> ...
+```
+
+#### Implementation Plan
+
+
 
 Instruction decode:
 
@@ -28,7 +65,7 @@ Implementation of string copy:
 
 
 
-### Control Signals Definitions:
+##### Control Signals Definitions:
 
 ```
 ACC_in   : ACC <- CPU internal bus
@@ -53,7 +90,7 @@ str_index_incr       : str_index <- str_index + 1
 check_end_str        : control the loop of strcpy
 ```
 
-### Control Sequence of Five Instructions:
+##### Control Sequence of Five Instructions:
 
 
 
