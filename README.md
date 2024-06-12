@@ -1,6 +1,6 @@
 # microcode_beginner_project
 
-This is an implementation of the simple multi-cycle processors in https://people.computing.clemson.edu/~mark/uprog.html using microcode. We also implement a string copy operation besides the load, add, store, and brz operations.
+This is an implementation of the simple multi-cycle processor in https://people.computing.clemson.edu/~mark/uprog.html using microcode. We also implement a string copy operation besides the load, add, store, and brz operations.
 
 ## Instructions:
 
