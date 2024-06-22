@@ -107,7 +107,6 @@ clock cycle   CSAR    control signals                             next addr
 	  4     10000    start_addr_out, MAR_in                        10001
 	  5     10001    read                                          10010
 	  6     10010    MDR_out, ACC_in                               10011 
-      
       7     10011    dest_addr_out, MAR_in                         10100
       8     10100    ACC_out, MDR_in                               10101
       9     10101    write, str_index_incr                         10110
@@ -141,7 +140,8 @@ clock cycle   CSAR    control signals                             next addr
 	  may either be untaken, in which case control returns to the start
 	  of the next macroinstruction fetch at address 0000:
 
-	  4     01111    or_address_with_acceq0 (yields jump to 0000)  00000
+	  4     01111    or_address_with_acceq0   if (acc==0):         00001
+	                                          else:                00000
 ```
 
 

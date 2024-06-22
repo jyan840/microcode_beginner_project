@@ -210,7 +210,7 @@ with pyrtl.conditional_assignment:
         pc.next |= bus
 
 # write out to memory
-memory[mar[0:8]] <<= pyrtl.MemBlock.EnabledWrite(mdr, write)
+memory[mar] <<= pyrtl.MemBlock.EnabledWrite(mdr, write)
 
 # reset step counter
 with pyrtl.conditional_assignment:
@@ -228,7 +228,7 @@ sim_trace = pyrtl.SimulationTrace()
 
 # Initialize the i_mem with your instructions.
 i_mem_init = {}
-with open('test-acc1_strcpy.txt', 'r') as fin:
+with open('test-acc4.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         i_mem_init[i] = int(line, 16)
@@ -242,7 +242,7 @@ sim = pyrtl.Simulation(tracer=sim_trace, memory_value_map={
 })
 
 # Run for an arbitrarily large number of cycles.
-for cycle in range(22):
+for cycle in range(134):
     sim.step({})
 
 # Use render_trace() to debug if your code doesn't work.
@@ -300,10 +300,10 @@ print(sim.inspect_mem(control_store))
 # print("passed!")
 
 # Test Case: test-acc1_strcpy.txt; num_cycle=22
-assert(sim.inspect_mem(memory)[0] == 0xabab)
-assert(sim.inspect_mem(memory)[1] == 0x0)
-assert(sim.inspect(ir) == 0x0)
-print("passed!")
+# assert(sim.inspect_mem(memory)[0] == 0xabab)
+# assert(sim.inspect_mem(memory)[1] == 0x0)
+# assert(sim.inspect(ir) == 0x0)
+# print("passed!")
 
 
 
@@ -316,4 +316,21 @@ print("passed!")
 # assert(sim.inspect_mem(memory)[13] == 0x0000)
 # assert(sim.inspect(ir) == 0x1234)
 # print("passed!")
+
+# Test Case: test-acc3.txt; num_cycle=78
+# assert(sim.inspect_mem(memory)[5] == 0x01e9)
+# assert(sim.inspect_mem(memory)[6] == 0x0000)
+# assert(sim.inspect(acc) == 0x0901)
+# print("passed!")
+
+# Test Case: test-acc4.txt; num_cycle=134
+assert(sim.inspect_mem(memory)[7] == 0x0001)
+assert(sim.inspect_mem(memory)[8] == 0x0001)
+assert(sim.inspect_mem(memory)[9] == 0x0daa)
+assert(sim.inspect_mem(memory)[10] == 0x0200)
+assert(sim.inspect_mem(memory)[11] == 0x0001)
+assert(sim.inspect_mem(memory)[12] == 0x0000)
+assert(sim.inspect_mem(memory)[13] == 0x0702)
+assert(sim.inspect(acc) == 0x0001)
+print("passed!")
 
