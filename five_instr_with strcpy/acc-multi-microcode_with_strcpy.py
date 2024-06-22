@@ -228,7 +228,7 @@ sim_trace = pyrtl.SimulationTrace()
 
 # Initialize the i_mem with your instructions.
 i_mem_init = {}
-with open('test-acc4.txt', 'r') as fin:
+with open('test-acc5.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         i_mem_init[i] = int(line, 16)
@@ -242,7 +242,7 @@ sim = pyrtl.Simulation(tracer=sim_trace, memory_value_map={
 })
 
 # Run for an arbitrarily large number of cycles.
-for cycle in range(134):
+for cycle in range(81):
     sim.step({})
 
 # Use render_trace() to debug if your code doesn't work.
@@ -324,13 +324,22 @@ print(sim.inspect_mem(control_store))
 # print("passed!")
 
 # Test Case: test-acc4.txt; num_cycle=134
-assert(sim.inspect_mem(memory)[7] == 0x0001)
-assert(sim.inspect_mem(memory)[8] == 0x0001)
-assert(sim.inspect_mem(memory)[9] == 0x0daa)
-assert(sim.inspect_mem(memory)[10] == 0x0200)
-assert(sim.inspect_mem(memory)[11] == 0x0001)
-assert(sim.inspect_mem(memory)[12] == 0x0000)
-assert(sim.inspect_mem(memory)[13] == 0x0702)
-assert(sim.inspect(acc) == 0x0001)
+# assert(sim.inspect_mem(memory)[7] == 0x0001)
+# assert(sim.inspect_mem(memory)[8] == 0x0001)
+# assert(sim.inspect_mem(memory)[9] == 0x0daa)
+# assert(sim.inspect_mem(memory)[10] == 0x0200)
+# assert(sim.inspect_mem(memory)[11] == 0x0001)
+# assert(sim.inspect_mem(memory)[12] == 0x0000)
+# assert(sim.inspect_mem(memory)[13] == 0x0702)
+# assert(sim.inspect(acc) == 0x0001)
+# print("passed!")
+
+# Test Case: test-acc5.txt; num_cycle=81
+assert(sim.inspect_mem(memory)[2] == 0x07c1)
+assert(sim.inspect_mem(memory)[3] == 0x0201)
+assert(sim.inspect_mem(memory)[4] == 0x0902)
+assert(sim.inspect_mem(memory)[5] == 0x0000)
+assert(sim.inspect_mem(memory)[9] == 0x1475)
+assert(sim.inspect(acc) == 0x04f3)
 print("passed!")
 
