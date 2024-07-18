@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <ilang/ilang++.h>
+#include <ilang/verilog-out/verilog_gen.h>
 //#include <ilang/util/log.h>
 
 using namespace std;
@@ -173,6 +174,11 @@ void GenerateVerilogModel(const Ila & a) {
         return;
     }
     a.ExportToVerilog(fout);
+    // VerilogGenerator vgen(VerilogGenerator::VlgGenConfig(
+    //   false));
+    // // vgen.ExportTopLevelInstr(ptr_)
+    // vgen.ExportIla(a);
+    // vgen.DumpToFile(fout);
 }
 
 int main() {
