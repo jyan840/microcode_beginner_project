@@ -1,31 +1,33 @@
 #include <iostream>
 #include <fstream>
 #include <ilang/ilang++.h>
-#include <ilang/util/log.h>
+//#include <ilang/util/log.h>
 
 using namespace std;
 using namespace ilang;
 
 Ila BuildModel() {
     // build the ila
-    auto acc_multi = Ila("acc-multi");
-    auto inst = acc_multi.NewBvInput("inst", 16);
-    auto acc = acc_multi.NewBvState("r0", 16);
+    auto acc_multi = Ila("acc_multi");
+
+    auto acc = acc_multi.NewBvState("acc", 16);
     auto pc = acc_multi.NewBvState("pc", 16);
     auto memory = acc_multi.NewMemState("memory", 16, 16);
-
-    // states used in strcpy
-    auto step_strcpy = acc_multi.NewBvState("step_strcpy", 2);
-    auto curr_char = acc_multi.NewBvState("load_strcpy", 16);
-    auto index = acc_multi.NewBvState("index", 16);
-
-    acc_multi.AddInit(step_strcpy == BvConst(0, 2));
-    acc_multi.AddInit(index == BvConst(0, 16));
+    auto inst = Load(memory, pc);
 
     auto op  = inst(2, 0);
+    auto addr = ZExt(inst(15, 8), 16);
+
+    // strcpy 
     auto str_start_addr = ZExt(inst(8, 3), 16);
     auto str_dest_addr = ZExt(inst(15, 9), 16);
-    auto addr = ZExt(inst(15, 8), 16);
+
+    // strncpy
+    auto str_len = ZExt(inst(6, 3), 16); // four bits for length
+    auto str_start_addr_n = ZExt(inst(10, 7), 16); // four bits for start_address
+    auto str_dest_addr_n = ZExt(inst(15, 11), 16); // five bits for dest_address
+
+    acc_multi.SetValid(BoolConst(true));
 
     auto LOAD = acc_multi.NewInstr("LOAD");
     {
@@ -57,29 +59,124 @@ Ila BuildModel() {
         BRZ.SetUpdate(pc, Ite(acc == 0, addr, pc + 1));
     }
 
-    auto LS_STRCPY = acc_multi.NewInstr("LS_STRCPY");
-    {
-        LS_STRCPY.SetDecode(op == BvConst(4, 3) & step_strcpy == BvConst(0, 1));
-        auto curr_char_result = Load(memory, str_start_addr + index);
-        auto store_char = Store(memory, str_dest_addr + index, curr_char_result);
-        LS_STRCPY.SetUpdate(memory, store_char);
-        LS_STRCPY.SetUpdate(curr_char, curr_char_result);
-        LS_STRCPY.SetUpdate(step_strcpy, BvConst(1, 1));
+    auto STRCPY = acc_multi.NewInstr("STRCPY");{
+        STRCPY.SetDecode(op == BvConst(4, 3));
+
+        auto strcpy_child = acc_multi.NewChild("strcpy_child");
+
+        auto strcpy_step = strcpy_child.NewBvState("strcpy_step", 1);
+        auto index = strcpy_child.NewBvState("index", 16);
+        auto curr_char = strcpy_child.NewBvState("curr_char", 16);
+
+        strcpy_child.SetValid(op == BvConst(4, 3));
+        strcpy_child.SetFetch(strcpy_step);
+
+        strcpy_child.AddInit(index == 0);
+        strcpy_child.AddInit(curr_char == 0);
+
+        auto ls_strcpy = strcpy_child.NewInstr("ls_strcpy"); {
+            ls_strcpy.SetDecode(strcpy_step == BvConst(0, 1));
+            auto curr_char_result = Load(memory, str_start_addr + index);
+            auto store_char = Store(memory, str_dest_addr + index, curr_char_result);
+            ls_strcpy.SetUpdate(memory, store_char);
+            ls_strcpy.SetUpdate(curr_char, curr_char_result);
+            ls_strcpy.SetUpdate(strcpy_step, BvConst(1, 1));
+        }
+
+        auto check_strcpy = acc_multi.NewInstr("check_strcpy");
+        {
+            check_strcpy.SetDecode(strcpy_step == BvConst(1, 1));
+            auto is_null = (curr_char == BvConst(0, 16));
+            check_strcpy.SetUpdate(index, Ite(is_null, BvConst(0, 16), index + 1));
+            check_strcpy.SetUpdate(pc, Ite(is_null, pc + 1, pc));
+            check_strcpy.SetUpdate(strcpy_step, BvConst(0, 1));
+        }   
+
+        STRCPY.SetProgram(strcpy_child);
+
     }
 
-    auto CHECK_STRCPY = acc_multi.NewInstr("CHECK_STRCPY");
-    {
-        CHECK_STRCPY.SetDecode(op = BvConst(4, 3) & step_strcpy == BvConst(1, 1));
-        auto is_null = (curr_char == BvConst(0, 16));
-        CHECK_STRCPY.SetUpdate(index, Ite(is_null, BvConst(0, 16), index + 1));
-        CHECK_STRCPY.SetUpdate(pc, Ite(is_null, pc + 1, pc));
-        CHECK_STRCPY.SetUpdate(step_strcpy, BvConst(0, 0));
+    auto STRNCPY = acc_multi.NewInstr("STRNCPY");{
+        STRNCPY.SetDecode(op == BvConst(5, 3));
+
+        auto strncpy_child = acc_multi.NewChild("strncpy_child");
+
+        auto strncpy_step = strncpy_child.NewBvState("strncpy_step", 1);
+        auto index = strncpy_child.NewBvState("index", 16);
+        
+        strncpy_child.SetValid(op == BvConst(5, 3));
+        strncpy_child.SetFetch(strncpy_step);
+
+        strncpy_child.AddInit(index == 0);
+
+        auto ls_strncpy = strncpy_child.NewInstr("ls_strncpy"); {
+            ls_strncpy.SetDecode(strncpy_step == BvConst(0, 1));
+            auto curr_char_result = Load(memory, str_start_addr_n + index);
+            auto store_char = Store(memory, str_dest_addr_n + index, curr_char_result);
+            ls_strncpy.SetUpdate(memory, store_char);
+            ls_strncpy.SetUpdate(strncpy_step, BvConst(1, 1));
+        }
+
+        auto check_strncpy = acc_multi.NewInstr("check_strncpy");
+        {
+            check_strncpy.SetDecode(strncpy_step == BvConst(1, 1));
+            auto check_end = (index == str_len - 1);
+            check_strncpy.SetUpdate(index, Ite(check_end, BvConst(0, 16), index + 1));
+            check_strncpy.SetUpdate(pc, Ite(check_end, pc + 1, pc));
+            check_strncpy.SetUpdate(check_end, BvConst(0, 1));
+        }   
+
+        STRNCPY.SetProgram(strncpy_child);
+
     }
+
+    // auto STRCPY = acc_multi.NewInstr("STRCPY");{
+    //     STRCPY.SetDecode(op == BvConst(4, 3));
+    //     auto src_data = Load(memory, str_start_addr);
+    //     STRCPY.SetUpdate(memory, Store(memory, str_dest_addr, src_data));
+    //     while (Ite(src_data==BvConst(0, 16), BoolConst(false), BoolConst(true))) {
+    //         str_start_addr = str_start_addr + 1;
+    //         str_dest_addr = str_dest_addr + 1;
+    //         src_data = Load(memory, str_start_addr);
+    //         STRCPY.SetUpdate(memory, Store(memory, str_dest_addr, src_data));
+    //     }
+    //     STRCPY.SetUpdate(pc, pc + 1);
+    // }
+    
+
+    // auto LS_STRCPY = acc_multi.NewInstr("LS_STRCPY");
+    // {
+    //     LS_STRCPY.SetDecode(op == BvConst(4, 3) & step_strcpy == BvConst(0, 1));
+    //     auto curr_char_result = Load(memory, str_start_addr + index);
+    //     auto store_char = Store(memory, str_dest_addr + index, curr_char_result);
+    //     LS_STRCPY.SetUpdate(memory, store_char);
+    //     LS_STRCPY.SetUpdate(curr_char, curr_char_result);
+    //     LS_STRCPY.SetUpdate(step_strcpy, BvConst(1, 1));
+    // }
+
+    // auto CHECK_STRCPY = acc_multi.NewInstr("CHECK_STRCPY");
+    // {
+    //     CHECK_STRCPY.SetDecode(op = BvConst(4, 3) & step_strcpy == BvConst(1, 1));
+    //     auto is_null = (curr_char == BvConst(0, 16));
+    //     CHECK_STRCPY.SetUpdate(index, Ite(is_null, BvConst(0, 16), index + 1));
+    //     CHECK_STRCPY.SetUpdate(pc, Ite(is_null, pc + 1, pc));
+    //     CHECK_STRCPY.SetUpdate(step_strcpy, BvConst(0, 1));
+    // }
 
     return acc_multi;
 }
 
+void GenerateVerilogModel(const Ila & a) {
+	ofstream fout("acc_multi.v");
+    if (!fout.is_open()) {
+        cerr << "Failed to open file for writing: acc_multi.v" << endl;
+        return;
+    }
+    a.ExportToVerilog(fout);
+}
+
 int main() {
+    GenerateVerilogModel(BuildModel());
     return 0;
 }
 
