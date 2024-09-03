@@ -76,7 +76,7 @@ clock cycle   CSAR    control signals                             next addr
           9     11100    write, str_index_incr                         11101
           10    11101    str_index_out, ACC_in                         11110
           11    11110    check_end_strn          if (acc==strn_len-1): 00000
-                                                 else: loop back to    10111
+          ...                                    else: loop back to    10111
 	
 	(The following is the same as before)
 	a load instruction causes a branch to 00101 for cycle 4:
