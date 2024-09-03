@@ -13,8 +13,9 @@ This is an implementation of the simple multi-cycle processor in https://people.
 
 (opcode 011)  brz   address      :  if( ACC == 0 ) PC <- address
 
-(opcode 100)  strcpy source dest :  memory[ dest ] <- memory[ source .. \0 ] 
-100. xxxxxx yyyyyyy
+(opcode 100)  strcpy  source dest :  memory[ dest ] <- memory[ source .. \0 ] 
+
+(opcode 101)  strncpy source dest :  memory[ dest ] <- memory[ source: source + n ] 
 ```
 
 ## Control Signals Definition:
@@ -38,7 +39,9 @@ NEW:
 start_addr_out       : CPU internal bus <- start_address + str_index
 dest_addr_out        : CPU internal bus <- destination_address + str_index
 str_index_incr       : str_index <- str_index + 1
+str_index_out        : CPU internal bus <- str_index
 check_end_str        : control the loop of strcpy
+check_end_strn       : control the loop of strncpy
 
 
 ```
@@ -58,11 +61,22 @@ clock cycle   CSAR    control signals                             next addr
 	  4     10000    start_addr_out, MAR_in                        10001
 	  5     10001    read                                          10010
 	  6     10010    MDR_out, ACC_in                               10011   
-      7     10011    dest_addr_out, MAR_in                         10100
-      8     10100    ACC_out, MDR_in                               10101
-      9     10101    write, str_index_incr                         10110
-      10    10110    check_end_str           if (acc==0):          00000
-      ...                                    else: loop back to    10000  
+          7     10011    dest_addr_out, MAR_in                         10100
+          8     10100    ACC_out, MDR_in                               10101
+          9     10101    write, str_index_incr                         10110
+          10    10110    check_end_str           if (acc==0):          00000
+          ...                                    else: loop back to    10000
+
+	a strncpy instruction causes a branch to 10111 for cycle 4: (NEW)
+          4     10111    start_addr_out, MAR_in                        11000
+          5     11000    read                                          11001
+          6     11001    MDR_out, ACC_in                               11010
+          7     11010    dest_addr_out, MAR_in                         11011
+          8     11011    ACC_out, MDR_in                               11100
+          9     11100    write, str_index_incr                         11101
+          10    11101    str_index_out, ACC_in                         11110
+          11    11110    check_end_strn          if (acc==strn_len-1): 00000
+                                                 else: loop back to    10111
 	
 	(The following is the same as before)
 	a load instruction causes a branch to 00101 for cycle 4:
