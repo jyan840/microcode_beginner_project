@@ -3,7 +3,6 @@ import pyrtl
 # memory
 memory = pyrtl.MemBlock(bitwidth=16, addrwidth=16, max_read_ports=1, max_write_ports=1, name='memory', asynchronous=True)
 
-
 # registers
 pc = pyrtl.Register(16, 'pc')
 ir = pyrtl.Register(16, 'ir')
@@ -31,7 +30,6 @@ reset = pyrtl.WireVector(1, 'reset')
 temp_out = pyrtl.WireVector(1, 'temp_out')
 write = pyrtl.WireVector(1, 'write')
 
-
 #########_additional_signals_for_microcode_#########
 next_address = pyrtl.WireVector(bitwidth=5, name='next_address')
 branch_via_table = pyrtl.WireVector(bitwidth=1, name="branch_via_table")
@@ -56,21 +54,23 @@ str_dest_addr = pyrtl.WireVector(bitwidth=7, name='str_dest_addr')
 
 # strncpy
 strn_start_addr = pyrtl.WireVector(bitwidth=4, name='strn_start_addr')
-strn_dest_addr = pyrtl.WireVector(bitwidth=4, name='strn_dest_addr')
-str_len = pyrtl.WireVector(bitwidth=3, name='str_len')
-# base_start = pyrtl.Const(val=0, bitwidth=10)
-# base_end = pyrtl.Const(val=0, bitwidth=9)
+strn_dest_addr = pyrtl.WireVector(bitwidth=5, name='strn_dest_addr')
+str_len = pyrtl.WireVector(bitwidth=4, name='str_len')
+
+# additional wirevectors for 16 bits address
+source_addr = pyrtl.WireVector(bitwidth=16, name='source_addr')
+dest_addr = pyrtl.WireVector(bitwidth=16, name='dest_addr')
+
 op <<= ir[0:3]
+addr <<= ir[8:] # address used in load and store
+
 str_start_addr <<= ir[3:9]
 str_dest_addr <<= ir[9:]
-addr <<= ir[8:]
 
 str_len <<= ir[3:7]
 strn_dest_addr <<= ir[11:]
 strn_start_addr <<= ir[7:11]
 
-source_addr = pyrtl.WireVector(bitwidth=16, name='source_addr')
-dest_addr = pyrtl.WireVector(bitwidth=16, name='dest_addr')
 with pyrtl.conditional_assignment:
     with op == 0b100:
         source_addr |= str_start_addr.zero_extended(16)
@@ -126,16 +126,16 @@ control_store = pyrtl.RomBlock(bitwidth=27, addrwidth=5, romdata=control_store_i
 
 # hardcoded instruction selection
 with pyrtl.conditional_assignment:
-    # selection between 4 instructions
+    # selection between 6 instructions
     with branch_via_table == 1:
         with op == 0:
-            next_address |= 0b00101 #00101
+            next_address |= 0b00101
         with op == 1:
-            next_address |= 0b01000 #01000
+            next_address |= 0b01000
         with op == 2:
-            next_address |= 0b01100 #01100
+            next_address |= 0b01100
         with op == 3:
-            next_address |= 0b01111 #01111
+            next_address |= 0b01111
         with op == 4:
             next_address |= 0b10000
         with op == 5:
@@ -144,7 +144,7 @@ with pyrtl.conditional_assignment:
     # brz condition is true
     with or_address_with_accbeq == 1:
         with acc == 0:
-            next_address |= 0b00001 #00001
+            next_address |= 0b00001
 
     # strcpy loop
     with check_end_str == 1:
@@ -159,7 +159,7 @@ with pyrtl.conditional_assignment:
     with pyrtl.otherwise:
         next_address |= CSIR[7:12]
 
-# values update
+# microinstruction value update
 CSAR.next <<= next_address
 CSIR <<= control_store[CSAR]
 
@@ -272,7 +272,7 @@ sim_trace = pyrtl.SimulationTrace()
 
 # Initialize the i_mem with your instructions.
 i_mem_init = {}
-with open('test-acc4_strncpy.txt', 'r') as fin:
+with open('test-acc1_strncpy.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         i_mem_init[i] = int(line, 16)
@@ -286,7 +286,7 @@ sim = pyrtl.Simulation(tracer=sim_trace, memory_value_map={
 })
 
 # Run for an arbitrarily large number of cycles.
-for cycle in range(179):
+for cycle in range(13):
     sim.step({})
 
 # Use render_trace() to debug if your code doesn't work.
@@ -388,8 +388,8 @@ print(sim.inspect_mem(control_store))
 # print("passed!")
 
 # Test Case: test-acc1_strncpy.txt; num_cycle =13
-# assert(sim.inspect_mem(memory)[1] == 0x080d)
-# print("passed!")
+assert(sim.inspect_mem(memory)[1] == 0x080d)
+print("passed!")
 
 # Test Case: test-acc2_strncpy.txt; num_cycle=36
 # assert(sim.inspect_mem(memory)[0] == 0x0350)
@@ -407,13 +407,13 @@ print(sim.inspect_mem(control_store))
 # print("passed!")
 
 # Test Case: test-acc4_strncpy.txt; num_cycle=179
-assert(sim.inspect_mem(memory)[0] == 0x002c)
-assert(sim.inspect_mem(memory)[1] == 0x0688)
-assert(sim.inspect_mem(memory)[2] == 0x539d)
-assert(sim.inspect_mem(memory)[3] == 0x0303)
-assert(sim.inspect_mem(memory)[4] == 0x0000)
-assert(sim.inspect_mem(memory)[10] == 0x539d)
-assert(sim.inspect_mem(memory)[11] == 0x0303)
-assert(sim.inspect_mem(memory)[12] == 0x0000)
-assert(sim.inspect(acc) == 0x002c)
-print("passed!")
+# assert(sim.inspect_mem(memory)[0] == 0x002c)
+# assert(sim.inspect_mem(memory)[1] == 0x0688)
+# assert(sim.inspect_mem(memory)[2] == 0x539d)
+# assert(sim.inspect_mem(memory)[3] == 0x0303)
+# assert(sim.inspect_mem(memory)[4] == 0x0000)
+# assert(sim.inspect_mem(memory)[10] == 0x539d)
+# assert(sim.inspect_mem(memory)[11] == 0x0303)
+# assert(sim.inspect_mem(memory)[12] == 0x0000)
+# assert(sim.inspect(acc) == 0x002c)
+# print("passed!")
