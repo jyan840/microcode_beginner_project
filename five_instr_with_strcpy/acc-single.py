@@ -2,19 +2,14 @@ import pyrtl
 # from generate_ir import generate_ir
 
 # memory
-# memory = pyrtl.MemBlock(bitwidth=16, addrwidth=16, name='i_mem')
-i_mem = pyrtl.MemBlock(bitwidth=16, addrwidth=16, name='i_mem')
-d_mem = pyrtl.MemBlock(bitwidth=16, addrwidth=16, name='d_mem', max_write_ports=2, max_read_ports=3, asynchronous=True)
+i_mem = pyrtl.MemBlock(bitwidth=16, addrwidth=16, name='i_mem') # instruction memory
+d_mem = pyrtl.MemBlock(bitwidth=16, addrwidth=16, name='d_mem', max_read_ports=4, max_write_ports=3, asynchronous=True) # data memory
 
 # registers
-pc = pyrtl.Register(16, 'pc')
+pc = pyrtl.Register(8, 'pc')
 acc = pyrtl.Register(16, 'acc')
-
-# new registers for strcpy & strncpy
-T = pyrtl.Register(bitwidth=16, name='T')
-str_index = pyrtl.Register(bitwidth=16, name='str_index')
-mar = pyrtl.Register(bitwidth=16, name='mar')
-mdr = pyrtl.Register(bitwidth=16, name='mdr')
+str_index = pyrtl.Register(bitwidth=8, name='str_index')
+fetch = pyrtl.Register(bitwidth=1, name='fetch')
 
 # control signals
 load = pyrtl.WireVector(bitwidth=1, name='load')
@@ -22,50 +17,39 @@ add = pyrtl.WireVector(1, 'add')
 branch = pyrtl.WireVector(1, 'branch')
 write_mem = pyrtl.WireVector(1, 'write_mem')
 
-# new control signals
-start_addr_out = pyrtl.WireVector(bitwidth=1, name='start_addr_out')
-dest_addr_out = pyrtl.WireVector(bitwidth=1, name='dest_addr_out')
-mar_in = pyrtl.WireVector(bitwidth=1, name='mar_in')
-mdr_in = pyrtl.WireVector(bitwidth=1, name='mdr_in')
-mdr_out = pyrtl.WireVector(bitwidth=1, name='mdr_out')
-acc_in = pyrtl.WireVector(bitwidth=1, name='acc_in')
-acc_out = pyrtl.WireVector(bitwidth=1, name='acc_out')
-read = pyrtl.WireVector(bitwidth=1, name='read')
-write = pyrtl.WireVector(bitwidth=1, name='write')
-str_index_incr = pyrtl.WireVector(bitwidth=1, name='str_index_incr')
-str_index_out = pyrtl.WireVector(bitwidth=1, name='str_index_out')
-check_end_str = pyrtl.WireVector(bitwidth=1, name='check_end_str')
-check_end_strn = pyrtl.WireVector(bitwidth=1, name='check_end_strn')
-inloop = pyrtl.WireVector(bitwidth=1, name='inloop')
-reset = pyrtl.WireVector(bitwidth=1, name='reset')
+strcpy = pyrtl.WireVector(bitwidth=1, name='strcpy')
+strncpy = pyrtl.WireVector(bitwidth=1, name='strncpy')
+
+temp = pyrtl.WireVector(bitwidth=16, name='temp')
 
 # wires
 ir = pyrtl.WireVector(16, 'ir')
 op = pyrtl.WireVector(3, 'op')
 addr = pyrtl.WireVector(8, 'addr')
-bus = pyrtl.WireVector(bitwidth=16, name='bus')
 
-# strcpy
+# wires for strcpy & strncpy
 str_start_addr = pyrtl.WireVector(bitwidth=6, name='str_start_addr')
 str_dest_addr = pyrtl.WireVector(bitwidth=7, name='str_dest_addr')
 
-# strncpy
 strn_start_addr = pyrtl.WireVector(bitwidth=4, name='strn_start_addr')
 strn_dest_addr = pyrtl.WireVector(bitwidth=5, name='strn_dest_addr')
 str_len = pyrtl.WireVector(bitwidth=4, name='str_len')
 
+instr_incr = pyrtl.WireVector(bitwidth=1, name="instr_incr")
+
 # additional wirevectors for 16 bits address
-source_addr = pyrtl.WireVector(bitwidth=16, name='source_addr')
-dest_addr = pyrtl.WireVector(bitwidth=16, name='dest_addr')
+source_addr = pyrtl.WireVector(bitwidth=8, name='source_addr')
+dest_addr = pyrtl.WireVector(bitwidth=8, name='dest_addr')
 
 # fetch
-ir <<= i_mem[pc]
+with pyrtl.conditional_assignment:
+    with fetch:
+        ir <<= i_mem[pc]
 
 # decode
 op <<= ir[0:3]
 addr <<= ir[8:]
 
-# new decode
 str_start_addr <<= ir[3:9]
 str_dest_addr <<= ir[9:]
 
@@ -75,151 +59,108 @@ strn_start_addr <<= ir[7:11]
 
 with pyrtl.conditional_assignment:
     with op == 0b100:
-        source_addr |= str_start_addr.zero_extended(16)
-        dest_addr |= str_dest_addr.zero_extended(16)
+        source_addr |= str_start_addr.zero_extended(8)
+        dest_addr |= str_dest_addr.zero_extended(8)
     with pyrtl.otherwise:
-        source_addr |= strn_start_addr.zero_extended(16)
-        dest_addr |= strn_dest_addr.zero_extended(16)
+        source_addr |= strn_start_addr.zero_extended(8)
+        dest_addr |= strn_dest_addr.zero_extended(8)
 
-def control(op, timestep):
-    load = pyrtl.WireVector(1)
-    add = pyrtl.WireVector(1)
-    branch = pyrtl.WireVector(1)
-    write_mem = pyrtl.WireVector(1)
-
-    start_addr_out = pyrtl.WireVector(1)
-    dest_addr_out = pyrtl.WireVector(1)
-    mar_in = pyrtl.WireVector(1)
-    mdr_in = pyrtl.WireVector(1)
-    mdr_out = pyrtl.WireVector(1)
-    acc_in = pyrtl.WireVector(1)
-    acc_out = pyrtl.WireVector(1)
-    read = pyrtl.WireVector(1)
-    write = pyrtl.WireVector(1)
-    str_index_incr = pyrtl.WireVector(1)
-    str_index_out = pyrtl.WireVector(1)
-    check_end_str = pyrtl.WireVector(1)
-    check_end_strn = pyrtl.WireVector(1)
-
-    inloop = pyrtl.WireVector(1)
-    reset = pyrtl.WireVector(1)
-
-    load <<= (op == 0b000)
-    add <<= (op == 0b001)
-    branch <<= (op == 0b011)
-    write_mem <<= (op == 0b010)
-
-    # strcpy & strncpy
-    # timestep 0 - 5
-    start_addr_out <<= ((op == 0b100) ^ (op == 0b101)) & (timestep == 0)
-    mar_in <<= ((op == 0b100) ^ (op == 0b101)) & ((timestep == 0) ^ (timestep == 3))
-    read <<= ((op == 0b100) ^ (op == 0b101)) & (timestep == 1)
-    mdr_out <<= ((op == 0b100) ^(op == 0b101)) & (timestep == 2)
-    acc_in <<= (((op == 0b100) ^ (op == 0b101)) & (timestep == 2)) ^ ((op == 0b101) & (timestep == 6))
-    dest_addr_out <<= ((op == 0b100) ^ (op == 0b101)) & (timestep == 3)
-    acc_out <<= ((op == 0b100) ^ (op == 0b101)) & (timestep == 4)
-    mdr_in <<= ((op == 0b100) ^ (op == 0b101)) & (timestep == 4)
-    write <<= ((op == 0b100) ^ (op == 0b101)) & (timestep == 5)
-    str_index_incr <<= ((op == 0b100) ^(op == 0b101)) & (timestep == 5)
-
-    # timestep 6 - 7
-    check_end_str <<= (op == 0b100) & (timestep == 6)
-    str_index_out <<= (op == 0b101) & (timestep == 6)
-    check_end_strn <<= (op == 0b101) & (timestep == 7)
-
-    inloop <<= (op == 0b100) ^ (op == 0b101)
-    reset <<= ((op != 0b100) & (op != 0b101)) ^ ((op == 0b100) & (timestep == 6)) ^ ((op == 0b101) & (timestep == 7))
-
-    return load, add, branch, write_mem, start_addr_out, mar_in, read, mdr_out, acc_in, dest_addr_out, acc_out, mdr_in, write, str_index_incr, check_end_str, str_index_out, check_end_strn, inloop, reset
-
-load_o, add_o, branch_o, write_mem_o, start_addr_out_o, mar_in_o, read_o, mdr_out_o, acc_in_o, dest_addr_out_o, acc_out_o, mdr_in_o, write_o, str_index_incr_o, check_end_str_o, str_index_out_o, check_end_strn_o, inloop_o, reset_o = control(op, T)
-
-load <<= load_o
-add <<= add_o
-branch <<= branch_o
-write_mem <<= write_mem_o
-start_addr_out <<= start_addr_out_o
-mar_in <<= mar_in_o
-read <<= read_o
-mdr_out <<= mdr_out_o
-acc_in <<= acc_in_o
-dest_addr_out <<= dest_addr_out_o
-acc_out <<= acc_out_o
-mdr_in <<= mdr_in_o
-write <<= write_o
-str_index_incr <<= str_index_incr_o
-check_end_str <<= check_end_str_o
-str_index_out <<= str_index_out_o
-check_end_strn <<= check_end_strn_o
-inloop <<= inloop_o
-reset <<= reset_o
+with pyrtl.conditional_assignment:
+    # with fetch:
+    with op == 0b000: # LOAD addr: ACC <- Mem[addr]
+        load |= 1
+        write_mem |= 0
+        add |= 0
+        branch |= 0
+        strcpy |= 0
+        strncpy |= 0
+    with op == 0b001: # ADD addr: ACC <- ACC + Mem[addr]
+        load |= 0
+        write_mem |= 0
+        add |= 1
+        branch |= 0
+        strcpy |= 0
+        strncpy |= 0
+    with op == 0b010: # STORE addr: Mem[addr] <- ACC
+        load |= 0
+        write_mem |= 1
+        add |= 0
+        branch |= 0
+        strcpy |= 0
+        strncpy |= 0
+    with op == 0b011: # BRZ addr: if (ACC==0) PC <- addr
+        load |= 0
+        write_mem |= 0
+        add |= 0
+        branch |= 1
+        strcpy |= 0
+        strncpy |= 0
+    with op == 0b100: # STRCPY: memory[ dest ] <- memory[ source .. \0 ]
+        load |= 0
+        write_mem |= 0
+        add |= 0
+        branch |= 0
+        strcpy |= 1
+        strncpy |= 0
+    with op == 0b101: # memory[ dest ] <- memory[ source: source + n ]
+        load |= 0
+        write_mem |= 0
+        add |= 0
+        branch |= 0
+        strcpy |= 0
+        strncpy |= 1
 
 # execute
-# register-enabling signals(sending)
-with pyrtl.conditional_assignment:
-    with start_addr_out:
-        bus |= source_addr + str_index
-    with dest_addr_out:
-        bus |= dest_addr + str_index
-    with mdr_out:
-        bus |= mdr
-    with acc_out:
-        bus |= acc
-    with str_index_out:
-        bus |= str_index
+fetch.next <<= instr_incr
 
-# register-enabling signals(receiving)(not include acc_in)
 with pyrtl.conditional_assignment:
-    with mar_in:
-        mar.next |= bus
-    with mdr_in:
-        mdr.next |= bus
-    with read:
-        mdr.next |= d_mem[mar]
+    with (fetch & (strcpy ^ strncpy)):
+        instr_incr |= 0
+    with ((~fetch) & strcpy & (temp != 0)):
+        instr_incr |= 0
+    with ((~fetch) & strncpy & (str_index != str_len - 1)):
+        instr_incr |= 0
+    with pyrtl.otherwise:
+        instr_incr |= 1
 
-# acc
 with pyrtl.conditional_assignment:
-    with load:
+    with (strcpy & ~fetch):
+        temp |= d_mem[source_addr + str_index]
+        d_mem[dest_addr + str_index] |= temp
+        with (temp != 0):
+            str_index.next |= str_index + 1
+        with pyrtl.otherwise:
+            str_index.next |= 0
+    with (strncpy & ~fetch):
+        temp |= d_mem[source_addr + str_index]
+        d_mem[dest_addr + str_index] |= temp
+        with (str_index != str_len - 1):
+            str_index.next |= str_index + 1
+        with pyrtl.otherwise:
+            str_index.next |= 0
+
+with pyrtl.conditional_assignment(
+        defaults={
+            pc: (pc + pyrtl.Const(1, bitwidth=8))[:8],
+            acc: acc
+        }
+):
+    with (strcpy & instr_incr):
+        acc.next |= 0
+    with (strncpy & instr_incr):
+        acc.next |= str_len
+    with (load & instr_incr):
         acc.next |= d_mem[addr]
-    with add:
+    with (add & instr_incr):
         acc.next |= d_mem[addr] + acc
-    with acc_in:
-        acc.next |= bus
-
-# pc
-with pyrtl.conditional_assignment:
-    with branch:
+    with (branch & instr_incr):
         with (acc == pyrtl.Const(0, bitwidth=16)):
             pc.next |= addr
-
-    # In strcpy and strncpy, pc should not update unless the check condition is true
-    with inloop:
-        with ((~check_end_str) & (~check_end_strn)) ^ (check_end_str & (acc != 0))  ^ (check_end_strn & (acc != str_len)):
-            pc.next |= pc
-        with pyrtl.otherwise:
-            pc.next |= pc + 1
-    with pyrtl.otherwise:
-        pc.next |= pc + 1
-
-# timestep
-with pyrtl.conditional_assignment:
-    with reset:
-        T.next |= 0
-    with pyrtl.otherwise:
-        T.next |= T + 1
+    with (~instr_incr):
+        pc.next |= pc
 
 # memory write
-d_mem[addr] <<= pyrtl.MemBlock.EnabledWrite(acc, write_mem) # store instruction
-d_mem[mar] <<= pyrtl.MemBlock.EnabledWrite(mdr, write) # write micro-operation
-
-# update str_index
-with pyrtl.conditional_assignment:
-    with str_index_incr:
-        str_index.next |= str_index + 1
-    with ((check_end_str) & (acc == 0)) ^ ((check_end_strn) & (acc == str_len)):
-        str_index.next |= 0
-    with pyrtl.otherwise:
-        str_index.next |= str_index
+d_mem[addr] <<= pyrtl.MemBlock.EnabledWrite(acc, write_mem)
 
 #pyrtl.optimize()
 #print(pyrtl.working_block())
@@ -231,14 +172,14 @@ sim_trace = pyrtl.SimulationTrace()
 
 # Initialize the i_mem with your instructions.
 i_mem_init = {}
-with open('test-acc1-imem.txt', 'r') as fin:
+with open('test-acc2-imem.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         i_mem_init[i] = int(line, 16)
         i += 1
 
 d_mem_init = {}
-with open('test-acc1-dmem.txt', 'r') as fin:
+with open('test-acc2-dmem.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         d_mem_init[i] = int(line, 16)
@@ -250,7 +191,7 @@ sim = pyrtl.Simulation(tracer=sim_trace, memory_value_map={
 })
 
 # Run for an arbitrarily large number of cycles.
-for cycle in range(50):
+for cycle in range(9):
     sim.step({})
 
 # Use render_trace() to debug if your code doesn't work.
@@ -258,4 +199,28 @@ sim_trace.render_trace(symbol_len=10, segment_size=1)
 
 # You can also print out the register file or memory like so if you want to debug:
 print(list(map(lambda p: hex(p[1]), sim.inspect_mem(d_mem).items())))
-print(sim.inspect(acc))
+print(sim.inspect_mem(d_mem))
+
+# Test Case: test-acc1_imem.txt, test-acc1_dmem.txt; num_cycle = 12
+# assert(sim.inspect(acc) == 0x2)
+# assert(sim.inspect_mem(d_mem)[2] == 0x2543)
+# assert(sim.inspect_mem(d_mem)[4] == 0x2340)
+# assert(sim.inspect_mem(d_mem)[5] == 0x203)
+# assert(sim.inspect_mem(d_mem)[6] == 0x2543)
+# assert(sim.inspect_mem(d_mem)[7] == 0x0)
+# assert(sim.inspect_mem(d_mem)[8] == 0x2543)
+# assert(sim.inspect_mem(d_mem)[9] == 0x0)
+# print("passed!")
+
+# Test Case: test-acc2_imem.txt, test-acc2_dmem.txt; num_cycle = 9
+assert(sim.inspect(acc) == 0x0)
+assert(sim.inspect_mem(d_mem)[0] == 0x1111)
+assert(sim.inspect_mem(d_mem)[1] == 0x2222)
+assert(sim.inspect_mem(d_mem)[2] == 0x0000)
+assert(sim.inspect_mem(d_mem)[3] == 0x0000)
+assert(sim.inspect_mem(d_mem)[4] == 0x1111)
+assert(sim.inspect_mem(d_mem)[5] == 0x2222)
+assert(sim.inspect_mem(d_mem)[6] == 0x0000)
+print("passed!")
+
+
