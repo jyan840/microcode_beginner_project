@@ -84,7 +84,7 @@ Ila BuildModel() {
             ls_strcpy.SetUpdate(strcpy_step, BvConst(1, 1));
         }
 
-        auto check_strcpy = acc_multi.NewInstr("check_strcpy");
+        auto check_strcpy = strcpy_child.NewInstr("check_strcpy");
         {
             check_strcpy.SetDecode(strcpy_step == BvConst(1, 1));
             auto is_null = (curr_char == BvConst(0, 16));
@@ -118,7 +118,7 @@ Ila BuildModel() {
             ls_strncpy.SetUpdate(strncpy_step, BvConst(1, 1));
         }
 
-        auto check_strncpy = acc_multi.NewInstr("check_strncpy");
+        auto check_strncpy = strncpy_child.NewInstr("check_strncpy");
         {
             check_strncpy.SetDecode(strncpy_step == BvConst(1, 1));
             auto check_end = (index == str_len - 1);
