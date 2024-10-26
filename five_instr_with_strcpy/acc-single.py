@@ -9,7 +9,7 @@ d_mem = pyrtl.MemBlock(bitwidth=16, addrwidth=16, name='d_mem', max_read_ports=4
 pc = pyrtl.Register(8, 'pc')
 acc = pyrtl.Register(16, 'acc')
 str_index = pyrtl.Register(bitwidth=8, name='str_index')
-fetch = pyrtl.Register(bitwidth=1, name='fetch')
+fetch = pyrtl.Register(bitwidth=1, name='fetch', reset_value=1)
 
 # control signals
 load = pyrtl.WireVector(bitwidth=1, name='load')
@@ -42,9 +42,9 @@ source_addr = pyrtl.WireVector(bitwidth=8, name='source_addr')
 dest_addr = pyrtl.WireVector(bitwidth=8, name='dest_addr')
 
 # fetch
-with pyrtl.conditional_assignment:
-    with fetch:
-        ir <<= i_mem[pc]
+# with pyrtl.conditional_assignment:
+#     with fetch:
+ir <<= i_mem[pc]
 
 # decode
 op <<= ir[0:3]
@@ -172,14 +172,14 @@ sim_trace = pyrtl.SimulationTrace()
 
 # Initialize the i_mem with your instructions.
 i_mem_init = {}
-with open('test-acc2-imem.txt', 'r') as fin:
+with open('test-acc1-strcpy-imem.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         i_mem_init[i] = int(line, 16)
         i += 1
 
 d_mem_init = {}
-with open('test-acc2-dmem.txt', 'r') as fin:
+with open('test-acc1-strcpy-dmem.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         d_mem_init[i] = int(line, 16)
@@ -191,7 +191,7 @@ sim = pyrtl.Simulation(tracer=sim_trace, memory_value_map={
 })
 
 # Run for an arbitrarily large number of cycles.
-for cycle in range(9):
+for cycle in range(12):
     sim.step({})
 
 # Use render_trace() to debug if your code doesn't work.
@@ -213,14 +213,49 @@ print(sim.inspect_mem(d_mem))
 # print("passed!")
 
 # Test Case: test-acc2_imem.txt, test-acc2_dmem.txt; num_cycle = 9
-assert(sim.inspect(acc) == 0x0)
-assert(sim.inspect_mem(d_mem)[0] == 0x1111)
-assert(sim.inspect_mem(d_mem)[1] == 0x2222)
-assert(sim.inspect_mem(d_mem)[2] == 0x0000)
+# assert(sim.inspect(acc) == 0x0)
+# assert(sim.inspect_mem(d_mem)[0] == 0x1111)
+# assert(sim.inspect_mem(d_mem)[1] == 0x2222)
+# assert(sim.inspect_mem(d_mem)[2] == 0x0000)
+# assert(sim.inspect_mem(d_mem)[3] == 0x0000)
+# assert(sim.inspect_mem(d_mem)[4] == 0x1111)
+# assert(sim.inspect_mem(d_mem)[5] == 0x2222)
+# assert(sim.inspect_mem(d_mem)[6] == 0x0000)
+# print("passed!")
+
+# Test Case: test-acc1-load-imem.txt, test-acc1-load-dmem.txt; num_cycle = 11
+# There is no assert for this test because it is verified by checking the value of registers in simulation trace.
+
+# Test Case: test-acc1-store-imem.txt, test-acc1-store-dmem.txt; num_cycle = 9
+# To verify the in acc, need to go back to the trace
+# assert(sim.inspect_mem(d_mem)[2] == 0x5f0e)
+# assert(sim.inspect_mem(d_mem)[3] == 0x1432)
+# assert(sim.inspect_mem(d_mem)[5] == 0x5abc)
+# assert(sim.inspect_mem(d_mem)[9] == 0x0000)
+# print("passed!")
+
+# Test Case: test-acc1-add-imem.txt, test-acc1-add-dmem.txt; num_cycle = 12
+# assert(sim.inspect_mem(d_mem)[1] == 0x7654)
+# assert(sim.inspect_mem(d_mem)[4] == 0xc978)
+# assert(sim.inspect(acc) == 0xefea)
+# print("passed!")
+
+# Test Case: test-acc1-brz-imem.txt, test-acc1-brz-dmem.txt; num_cycle = 12
+# assert(sim.inspect_mem(d_mem)[1] == 0x0101)
+# assert(sim.inspect(ir) == 0x01ba)
+# assert(sim.inspect(acc) == 0x0101)
+# print("passed!")
+
+# Test Case: test-acc1-strcpy-imem.txt, test-acc1-strcpy-dmem.txt.txt; num_cycle = 12
+assert(sim.inspect_mem(d_mem)[0] == 0xab12)
+assert(sim.inspect_mem(d_mem)[1] == 0x3415)
+assert(sim.inspect_mem(d_mem)[2] == 0x2231)
 assert(sim.inspect_mem(d_mem)[3] == 0x0000)
-assert(sim.inspect_mem(d_mem)[4] == 0x1111)
-assert(sim.inspect_mem(d_mem)[5] == 0x2222)
-assert(sim.inspect_mem(d_mem)[6] == 0x0000)
+assert(sim.inspect_mem(d_mem)[4] == 0x0213)
+assert(sim.inspect_mem(d_mem)[5] == 0xab12)
+assert(sim.inspect_mem(d_mem)[6] == 0x2231)
+assert(sim.inspect_mem(d_mem)[7] == 0x0000)
+assert(sim.inspect_mem(d_mem)[8] == 0x0000)
+assert(sim.inspect_mem(d_mem)[9] == 0x0000)
+assert(sim.inspect(acc) == 0x2231)
 print("passed!")
-
-
