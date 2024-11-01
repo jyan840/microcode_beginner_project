@@ -8,7 +8,7 @@ d_mem = pyrtl.MemBlock(bitwidth=16, addrwidth=16, name='d_mem', max_read_ports=4
 # registers
 pc = pyrtl.Register(8, 'pc')
 acc = pyrtl.Register(16, 'acc')
-str_index = pyrtl.Register(bitwidth=8, name='str_index')
+str_index = pyrtl.Register(bitwidth=16, name='str_index')
 fetch = pyrtl.Register(bitwidth=1, name='fetch', reset_value=1)
 
 # control signals
@@ -38,8 +38,11 @@ str_len = pyrtl.WireVector(bitwidth=4, name='str_len')
 instr_incr = pyrtl.WireVector(bitwidth=1, name="instr_incr")
 
 # additional wirevectors for 16 bits address
-source_addr = pyrtl.WireVector(bitwidth=8, name='source_addr')
-dest_addr = pyrtl.WireVector(bitwidth=8, name='dest_addr')
+source_addr = pyrtl.WireVector(bitwidth=16, name='source_addr')
+dest_addr = pyrtl.WireVector(bitwidth=16, name='dest_addr')
+
+schar_addr = pyrtl.WireVector(bitwidth=16, name="schar_addr")
+dchar_addr = pyrtl.WireVector(bitwidth=16, name="dchar_addr")
 
 # fetch
 # with pyrtl.conditional_assignment:
@@ -59,11 +62,11 @@ strn_start_addr <<= ir[7:11]
 
 with pyrtl.conditional_assignment:
     with op == 0b100:
-        source_addr |= str_start_addr.zero_extended(8)
-        dest_addr |= str_dest_addr.zero_extended(8)
+        source_addr |= str_start_addr.zero_extended(16)
+        dest_addr |= str_dest_addr.zero_extended(16)
     with pyrtl.otherwise:
-        source_addr |= strn_start_addr.zero_extended(8)
-        dest_addr |= strn_dest_addr.zero_extended(8)
+        source_addr |= strn_start_addr.zero_extended(16)
+        dest_addr |= strn_dest_addr.zero_extended(16)
 
 with pyrtl.conditional_assignment:
     # with fetch:
@@ -123,17 +126,20 @@ with pyrtl.conditional_assignment:
     with pyrtl.otherwise:
         instr_incr |= 1
 
+schar_addr <<= source_addr + str_index
+dchar_addr <<= dest_addr + str_index
+
 with pyrtl.conditional_assignment:
     with (strcpy & ~fetch):
-        temp |= d_mem[source_addr + str_index]
-        d_mem[dest_addr + str_index] |= temp
+        temp |= d_mem[schar_addr]
+        d_mem[dchar_addr] |= temp
         with (temp != 0):
             str_index.next |= str_index + 1
         with pyrtl.otherwise:
             str_index.next |= 0
     with (strncpy & ~fetch):
-        temp |= d_mem[source_addr + str_index]
-        d_mem[dest_addr + str_index] |= temp
+        temp |= d_mem[schar_addr]
+        d_mem[dchar_addr] |= temp
         with (str_index != str_len - 1):
             str_index.next |= str_index + 1
         with pyrtl.otherwise:
@@ -172,14 +178,14 @@ sim_trace = pyrtl.SimulationTrace()
 
 # Initialize the i_mem with your instructions.
 i_mem_init = {}
-with open('test-acc1-strcpy-imem.txt', 'r') as fin:
+with open('test-acc1-strncpy-imem.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         i_mem_init[i] = int(line, 16)
         i += 1
 
 d_mem_init = {}
-with open('test-acc1-strcpy-dmem.txt', 'r') as fin:
+with open('test-acc1-strncpy-dmem.txt', 'r') as fin:
     i = 0
     for line in fin.readlines():
         d_mem_init[i] = int(line, 16)
@@ -191,7 +197,7 @@ sim = pyrtl.Simulation(tracer=sim_trace, memory_value_map={
 })
 
 # Run for an arbitrarily large number of cycles.
-for cycle in range(12):
+for cycle in range(22):
     sim.step({})
 
 # Use render_trace() to debug if your code doesn't work.
@@ -247,15 +253,28 @@ print(sim.inspect_mem(d_mem))
 # print("passed!")
 
 # Test Case: test-acc1-strcpy-imem.txt, test-acc1-strcpy-dmem.txt.txt; num_cycle = 12
-assert(sim.inspect_mem(d_mem)[0] == 0xab12)
-assert(sim.inspect_mem(d_mem)[1] == 0x3415)
-assert(sim.inspect_mem(d_mem)[2] == 0x2231)
-assert(sim.inspect_mem(d_mem)[3] == 0x0000)
-assert(sim.inspect_mem(d_mem)[4] == 0x0213)
-assert(sim.inspect_mem(d_mem)[5] == 0xab12)
-assert(sim.inspect_mem(d_mem)[6] == 0x2231)
+# assert(sim.inspect_mem(d_mem)[0] == 0xab12)
+# assert(sim.inspect_mem(d_mem)[1] == 0x3415)
+# assert(sim.inspect_mem(d_mem)[2] == 0x2231)
+# assert(sim.inspect_mem(d_mem)[3] == 0x0000)
+# assert(sim.inspect_mem(d_mem)[4] == 0x0213)
+# assert(sim.inspect_mem(d_mem)[5] == 0xab12)
+# assert(sim.inspect_mem(d_mem)[6] == 0x2231)
+# assert(sim.inspect_mem(d_mem)[7] == 0x0000)
+# assert(sim.inspect_mem(d_mem)[8] == 0x0000)
+# assert(sim.inspect_mem(d_mem)[9] == 0x0000)
+# assert(sim.inspect(acc) == 0x2231)
+# print("passed!")
+
+# Test Case: test-acc1-strncpy-imem.txt, test-acc1-strncpy-dmem.txt; num_cycle = 22
+assert(sim.inspect_mem(d_mem)[0] == 0x0213)
+assert(sim.inspect_mem(d_mem)[1] == 0xa1d4)
+assert(sim.inspect_mem(d_mem)[2] == 0x323d)
+assert(sim.inspect_mem(d_mem)[3] == 0x0213)
+assert(sim.inspect_mem(d_mem)[4] == 0x0000)
+assert(sim.inspect_mem(d_mem)[5] == 0x0000)
+assert(sim.inspect_mem(d_mem)[6] == 0x0000)
 assert(sim.inspect_mem(d_mem)[7] == 0x0000)
 assert(sim.inspect_mem(d_mem)[8] == 0x0000)
 assert(sim.inspect_mem(d_mem)[9] == 0x0000)
-assert(sim.inspect(acc) == 0x2231)
 print("passed!")
