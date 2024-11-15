@@ -1,3 +1,4 @@
+// prove that: b_o = ~a_i & a_i = 0
 module test(a_i, b_o);
   input [7:0] a_i;
   output [7:0] b_o;
@@ -9,7 +10,7 @@ module test(a_i, b_o);
     .a(a_i),
 	.b(b)
   );
-  assign b_o = b + 1;
+  assign b_o = b & a_i;
 endmodule
 
 (* blackbox *)

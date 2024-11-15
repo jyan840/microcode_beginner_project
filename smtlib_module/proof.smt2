@@ -61,9 +61,11 @@
 (declare-fun s1 () test_s)
 
 (assert (= (|test_n b_o| s1)
-		   (bvadd
+		   (bvand
 		     (bvnot (|test_n a_i| s1))
-             #b00000001)))
+		     (|test_n a_i| s1))
+             #b00000000))
 
 ; is there such a model?
 (check-sat)
+;(get-model)
