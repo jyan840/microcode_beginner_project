@@ -16,7 +16,16 @@ class ACC_MULTI {
         Ila model;
     
     private:
-        Ila BuildModel();
+        void AddChild_STRCPY(InstrRef& inst);
+        void AddChild_STRNCPY(InstrRef& inst);
+
+    protected:
+        ExprRef acc;
+        ExprRef memory;
+        ExprRef pc;
+        ExprRef source_addr;
+        ExprRef dest_addr;
+        ExprRef str_len;
 };
 
 
