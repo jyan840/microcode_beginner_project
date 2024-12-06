@@ -1,0 +1,5 @@
+read_verilog alu.v 
+hierarchy -check -top alu; proc; opt; check -assert
+proc; opt
+techmap; opt; flatten
+write_smt2 -tpl alu_proof.tpl alu_proof.smt2

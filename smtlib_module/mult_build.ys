@@ -1,0 +1,5 @@
+read_verilog mult.v 
+hierarchy -check -top mult; proc; opt; check -assert
+proc; opt
+techmap; opt; flatten
+write_smt2 -tpl mult_proof.tpl mult_proof.smt2
