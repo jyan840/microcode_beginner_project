@@ -1,0 +1,5 @@
+read_verilog regfile.v
+proc; opt; check -assert
+proc; opt
+techmap; opt; flatten
+write_smt2 smt_regfile.smt2

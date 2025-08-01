@@ -1,0 +1,5 @@
+read_verilog -sv mul_constraints_example.v
+hierarchy -check -top smtlib_wrapper; proc; opt; check -assert
+proc; opt
+techmap; opt; flatten
+write_smt2 mul_cons.smt2
